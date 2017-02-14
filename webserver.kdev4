@@ -1,0 +1,4 @@
+[Project]
+Name=webserver
+Manager=KDevCMakeManager
+VersionControl=

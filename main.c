@@ -128,60 +128,20 @@ void* httpserver_Dispatch(void *arg) {
     {
 		contentLen += evbuffer_remove(inbuff, content + contentLen, 128);		
     }
-    
-    char* outPacketId;  
+      
     struct evbuffer *outbuff = evbuffer_new();
     
     char *client_ip;
     unsigned short client_port;
 
     evhttp_connection_get_peer(evhttp_request_get_connection(req), &client_ip, &client_port);
-        
-    int statuscode = proto(content, contentLen, &outPacketId, client_ip, client_port);        
     
-    char* jsonmessage;
-    char* protocolmessage;
-    int jsonstatuscode;
-    int protostatuscode;
+    char* responceMessage;
+    int responceLength;
     
-    switch(statuscode)
-    {
-      case 200:
-	jsonstatuscode = 200;
-	protostatuscode = 200;
-	jsonmessage = "";
-	protocolmessage = "OK";
-	break;
-	
-      case 401:
-	jsonstatuscode = 401;
-	protostatuscode = 200;
-	jsonmessage = "unauthorized";
-	protocolmessage = "ERROR";
-	break;
-	
-      case 415:
-	jsonstatuscode = 415;
-	protostatuscode = 200;
-	jsonmessage = "invalid json data";
-	protocolmessage = "ERROR";
-	syslog(LOG_ERR, "Error persing JSON -> %s", content);
-	break;
-	
-      case 500:
-      default:
-	jsonstatuscode = 500;
-	protostatuscode = 500;
-	jsonmessage = "unhandled internal server error";
-	protocolmessage = "ERROR";
-	syslog(LOG_ERR, "Internal errorgit JSON -> %s", content);
-	break;	
-    }
+    int statuscode = proto(content, contentLen, &responceMessage);        
     
-    evbuffer_add_printf(outbuff,
-            "{\"id\":\"%s\",\n"
-            "\"error_code\":\"%d\",\n"
-            "\"error_message\":\"%s\"}", outPacketId, jsonstatuscode, jsonmessage);
+    evbuffer_add_printf(outbuff, "%s", responceMessage);
           
     char outcontentLengthStr[3];
     sprintf(outcontentLengthStr, "%zu", evbuffer_get_length(outbuff));
@@ -192,7 +152,7 @@ void* httpserver_Dispatch(void *arg) {
     evhttp_add_header(req->output_headers, "Content-Length", outcontentLengthStr);
 
     // Send reply
-    evhttp_send_reply(req, protostatuscode, protocolmessage, outbuff);
+    evhttp_send_reply(req, statuscode, "OK", outbuff);
 
     // Free memory
     evbuffer_free(outbuff);    

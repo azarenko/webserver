@@ -126,7 +126,7 @@ void* httpserver_Dispatch(void *arg) {
     inbuff = evhttp_request_get_input_buffer(req);    
 	while (evbuffer_get_length(inbuff)) 
     {
-		contentLen += evbuffer_remove(inbuff, content + contentLen, 128);		
+	contentLen += evbuffer_remove(inbuff, content + contentLen, 128);		
     }
       
     struct evbuffer *outbuff = evbuffer_new();
@@ -142,6 +142,8 @@ void* httpserver_Dispatch(void *arg) {
     int statuscode = proto(content, contentLen, &responceMessage);        
     
     evbuffer_add_printf(outbuff, "%s", responceMessage);
+    
+    free(responceMessage);
           
     char outcontentLengthStr[3];
     sprintf(outcontentLengthStr, "%zu", evbuffer_get_length(outbuff));
@@ -246,6 +248,7 @@ int main(int argc, char **argv)
     if(pidf==NULL)
     {
         syslog(LOG_ERR, "Failed to write pid file");
+	return;
     }
 
     fprintf(pidf, "%d", getpid());

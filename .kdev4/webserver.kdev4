@@ -29,7 +29,7 @@ Name=New Compiled Binary Launcher
 Type=Native Application
 
 [Launch][Launch Configuration 0][Data]
-Arguments=
+Arguments=-f /home/user/Projects/webserver/webserver.conf
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
 Dependency Action=Nothing
 EnvironmentGroup=

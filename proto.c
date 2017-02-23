@@ -31,67 +31,67 @@
 #define FD_COPY(f, t)   (void)(*(t) = *(f))
 #define INITPACKETLEN 17
 #define SERIALIZESENSORLEN 2048
+#define MAX_CONTENT_LEN 1024 * 512
 
 #define DECL  "DECLARE cursor%u CURSOR FOR "
 #define FETCH "FETCH ALL in cursor%u"
 #define CLOSE "CLOSE cursor%u"
 
-/**
- * @brief ...
- * 
- * @param reqdata ...
- * @param len ...
- * @param outPacketId ...
- * @param client_ip ...
- * @param client_port ...
- * @return int
- */
+
 int proto(char* reqdata, int len, const char** responceMessage)
 {
+    *responceMessage = malloc(sizeof(char) * MAX_CONTENT_LEN);
+    bzero(*responceMessage, MAXLENQUERY);
+  
     cJSON *root = cJSON_Parse(reqdata);
     
-    cJSON *id = cJSON_GetObjectItem(root, "id");
-    if(id == NULL)
+    cJSON *type = cJSON_GetObjectItem(root, "type");
+    if(type == NULL)
     {
-        syslog(LOG_ERR, "Error persing id");
-        return 415;
-    }
-    *outPacketId = id->valuestring;
-    
-    cJSON *data = cJSON_GetObjectItem(root, "data");
-    if(data == NULL)
-    {
-        syslog(LOG_ERR, "Error persing data");
-        return 415;
+        sprintf(*responceMessage, "%s", "{error:'Error persing type property'}");
+        syslog(LOG_ERR, *responceMessage);
+	  
+        return 200;
     }
     
-    if(data->type != cJSON_Array && data->type != cJSON_String)
-    {
-        syslog(LOG_ERR, "Error persing type of data member");
-        return 415;
-    }
+    PGresult *res;    
+       
+    int connectionId = connectionIndex++ % CONNECTION_BACKLOG;
     
-    if(data->type == cJSON_String)
-    {
-        cJSON *point = cJSON_Parse(data->valuestring);        
-        return parsepoint(point, client_ip, client_port);
-    }
+    pthread_mutex_lock(&selectconnectionlock[connectionId]);
+    PGconn* conn = connections[connectionId];
     
-    if(data->type == cJSON_Array)
+    if (PQstatus(conn) == CONNECTION_BAD) 
     {
-        int length = cJSON_GetArraySize(data);
-        int i;
-        for(i = 0; i < length; i++)
+        conn = NULL;
+        if(db_login(&conn) == 0)
         {
-            cJSON * subitem = cJSON_GetArrayItem(data, i);
-	    int status = parsepoint(subitem, client_ip, client_port);
-            if(status != 200)
-            {
-                return status;
-            }
+            pthread_mutex_unlock(&selectconnectionlock[connectionId]);
+            return 500;
         }
     }
     
+    char query[MAXLENQUERY];
+    bzero(query,MAXLENQUERY);
+    
+    sprintf(query,"SELECT %s('%s');", type->valuestring, reqdata);
+    
+    res = getexecsql(conn, query);
+    if(res)
+    {
+        if (PQgetisnull(res,0,0))
+        {
+            if(debug>1)syslog(LOG_ERR, "exec sql error");
+        } 
+        else 
+        {
+            sprintf(*responceMessage,"%s",PQgetvalue(res, 0, 0));
+            if(debug>1)syslog(LOG_ERR,"exec sql ok. responce = %s", *responceMessage);
+        }         
+    }
+    clearres(conn, res);
+    
+    pthread_mutex_unlock(&selectconnectionlock[connectionId]);
     return 200;
 }
 

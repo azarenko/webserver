@@ -1,1 +1,0 @@
-/usr/bin/cc  -g   CMakeFiles/webserver.dir/main.c.o CMakeFiles/webserver.dir/cmdparam.c.o CMakeFiles/webserver.dir/settings.c.o CMakeFiles/webserver.dir/sockutils.c.o CMakeFiles/webserver.dir/proto.c.o CMakeFiles/webserver.dir/cJSON.c.o  -o webserver -rdynamic -levent -lpthread -lconfig -lpq -lm 
